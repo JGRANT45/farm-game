@@ -2,7 +2,8 @@
 
 #define INVENTORY_SIZE 10
 #define SLOT_EMPTY     0
-
+#define MIN_ITEM_ID    0
+#define MAX_ITEM_ID    9
 #define ITEM_WOOD      1
 #define ITEM_STONE     2
 #define ITEM_SEEDS     3
@@ -101,6 +102,23 @@ static void drop_item(int inv[INVENTORY_SIZE])
     printf("Из слота %d выброшен [%d] (%s).\n", slot, inv[slot], item_name(inv[slot]));
     inv[slot] = SLOT_EMPTY;
 }
+static void variant_search_heavy(const int inv[INVENTORY_SIZE])
+{
+    int a = 0;
+    if (!read_int("Введите ID предмета a (0-9): ", MIN_ITEM_ID, MAX_ITEM_ID, &a)) return;
+
+    printf("Слоты с предметами, чей ID строго больше %d:\n", a);
+    int found = 0;
+    for (int i = 0; i < INVENTORY_SIZE; i++) {
+        if (inv[i] > a) {
+            printf("  Слот %d: [%d] (%s)\n", i, inv[i], item_name(inv[i]));
+            found = 1;
+        }
+    }
+    if (!found) {
+        printf("  Таких предметов нет.\n");
+    }
+}
 static void print_menu(void)
 {
     printf("\n===== МЕНЮ =====\n");
@@ -110,6 +128,7 @@ static void print_menu(void)
     printf("[3] Посмотреть инвентарь\n");
     printf("[4] Положить предмет в слот\n");
     printf("[5] Выбросить предмет\n");
+    printf("[6] Выполнить задание по варианту (Поиск тяжестей)\n");
     printf("Выберите пункт: ");
 }
 
@@ -142,6 +161,7 @@ int main(void)
             case 3: print_inventory(inventory); break;
             case 4: put_item(inventory); break;
             case 5: drop_item(inventory); break;
+            case 6: variant_search_heavy(inventory); break;
             default: printf("Неверный пункт.\n"); break;
         }
     } while (choice != 0);
