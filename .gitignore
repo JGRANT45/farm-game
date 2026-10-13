@@ -1,0 +1,16 @@
+# Скомпилированные файлы
+*.exe
+*.o
+*.out
+*.obj
+*.bin
+
+# Папки IDE
+.vs/
+.vscode/
+.idea/
+cmake-build-*/
+
+# Локальные файлы
+*.user
+*.log
