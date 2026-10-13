@@ -16,7 +16,8 @@
 #define START_DAY      1
 #define START_HOUR     8
 #define HOURS_IN_DAY   24
-
+#define MIN_SLOT       0
+#define MAX_SLOT       (INVENTORY_SIZE - 1)
 static const char *item_name(int id)
 {
     switch (id) {
@@ -62,7 +63,44 @@ static void pass_time(int *day, int *hour)
     }
     printf("Новое время: День %d, %02d:00\n", *day, *hour);
 }
+static int read_int(const char *prompt, int min, int max, int *out)
+{
+    int value;
+    printf("%s", prompt);
+    if (scanf("%d", &value) != 1) {
+        printf("Ошибка: нужно целое число.\n");
+        while (getchar() != '\n');
+        return 0;
+    }
+    while (getchar() != '\n');
+    if (value < min || value > max) {
+        printf("Ошибка: диапазон [%d; %d].\n", min, max);
+        return 0;
+    }
+    *out = value;
+    return 1;
+}
 
+static void put_item(int inv[INVENTORY_SIZE])
+{
+    int slot = 0, id = 0;
+    if (!read_int("Введите индекс слота (0-9): ", MIN_SLOT, MAX_SLOT, &slot)) return;
+    if (!read_int("Введите ID предмета (1-9): ", ITEM_WOOD, ITEM_TOOL, &id)) return;
+    inv[slot] = id;
+    printf("Предмет [%d] (%s) положен в слот %d.\n", id, item_name(id), slot);
+}
+
+static void drop_item(int inv[INVENTORY_SIZE])
+{
+    int slot = 0;
+    if (!read_int("Введите индекс слота (0-9): ", MIN_SLOT, MAX_SLOT, &slot)) return;
+    if (inv[slot] == SLOT_EMPTY) {
+        printf("Слот %d уже пуст.\n", slot);
+        return;
+    }
+    printf("Из слота %d выброшен [%d] (%s).\n", slot, inv[slot], item_name(inv[slot]));
+    inv[slot] = SLOT_EMPTY;
+}
 static void print_menu(void)
 {
     printf("\n===== МЕНЮ =====\n");
@@ -70,6 +108,8 @@ static void print_menu(void)
     printf("[1] Посмотреть на часы\n");
     printf("[2] Промотать время (Поработать)\n");
     printf("[3] Посмотреть инвентарь\n");
+    printf("[4] Положить предмет в слот\n");
+    printf("[5] Выбросить предмет\n");
     printf("Выберите пункт: ");
 }
 
@@ -100,6 +140,8 @@ int main(void)
             case 1: show_clock(current_day, current_hour); break;
             case 2: pass_time(&current_day, &current_hour); break;
             case 3: print_inventory(inventory); break;
+            case 4: put_item(inventory); break;
+            case 5: drop_item(inventory); break;
             default: printf("Неверный пункт.\n"); break;
         }
     } while (choice != 0);
