@@ -1,18 +1,12 @@
 #include <stdio.h>
+#include <string.h>
 
 #define INVENTORY_SIZE 10
+#define MAX_ITEMS      10
+#define MAX_NAME_LEN   32
+#define MAX_LINE_LEN   256
+
 #define SLOT_EMPTY     0
-
-#define ITEM_WOOD      1
-#define ITEM_STONE     2
-#define ITEM_SEEDS     3
-#define ITEM_IRON      4
-#define ITEM_GOLD      5
-#define ITEM_APPLE     6
-#define ITEM_BREAD     7
-#define ITEM_WATER     8
-#define ITEM_TOOL      9
-
 #define START_DAY      1
 #define START_HOUR     8
 #define HOURS_IN_DAY   24
@@ -20,6 +14,10 @@
 #define MAX_SLOT       (INVENTORY_SIZE - 1)
 #define MIN_ITEM_ID    0
 #define MAX_ITEM_ID    9
+
+#define FILE_ITEMS     "items.txt"
+
+char item_names[MAX_ITEMS][MAX_NAME_LEN];
 
 static void clear_input(void) {
     int c;
@@ -36,26 +34,41 @@ static int read_int(const char *prompt, int min, int max, int *out) {
     }
     clear_input();
     if (value < min || value > max) {
-        printf("Ошибка: число должно быть в диапазоне [%d; %d].\n", min, max);
+        printf("Ошибка: диапазон [%d; %d].\n", min, max);
         return 0;
     }
     *out = value;
     return 1;
 }
 
-static const char *item_name(int id) {
-    switch (id) {
-        case SLOT_EMPTY: return "Пусто";
-        case ITEM_WOOD:  return "Дерево";
-        case ITEM_STONE: return "Камень";
-        case ITEM_SEEDS: return "Семена";
-        case ITEM_IRON:  return "Железо";
-        case ITEM_GOLD:  return "Золото";
-        case ITEM_APPLE: return "Яблоко";
-        case ITEM_BREAD: return "Хлеб";
-        case ITEM_WATER: return "Вода";
-        case ITEM_TOOL:  return "Инструмент";
-        default:         return "Неизвестно";
+static void load_item_names(void) {
+    FILE *f = fopen(FILE_ITEMS, "r");
+    if (f == NULL) {
+        printf("[!] Файл %s не найден. Использую стандартные названия.\n", FILE_ITEMS);
+        strcpy(item_names[0], "Пусто");
+        strcpy(item_names[1], "Дерево");
+        strcpy(item_names[2], "Камень");
+        strcpy(item_names[3], "Семена");
+        strcpy(item_names[4], "Железо");
+        strcpy(item_names[5], "Золото");
+        strcpy(item_names[6], "Яблоко");
+        strcpy(item_names[7], "Хлеб");
+        strcpy(item_names[8], "Вода");
+        strcpy(item_names[9], "Инструмент");
+        return;
+    }
+    char line[MAX_LINE_LEN];
+    int idx = 0;
+    while (idx < MAX_ITEMS && fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\n")] = '\0';
+        if (strlen(line) == 0) continue;
+        strncpy(item_names[idx], line, MAX_NAME_LEN - 1);
+        item_names[idx][MAX_NAME_LEN - 1] = '\0';
+        idx++;
+    }
+    fclose(f);
+    for (int i = idx; i < MAX_ITEMS; i++) {
+        snprintf(item_names[i], MAX_NAME_LEN, "Предмет %d", i);
     }
 }
 
@@ -76,16 +89,16 @@ static void pass_time(int *day, int *hour) {
 
 static void print_inventory(const int inv[INVENTORY_SIZE]) {
     for (int i = 0; i < INVENTORY_SIZE; i++) {
-        printf("Слот %d: [%d] (%s)\n", i, inv[i], item_name(inv[i]));
+        printf("Слот %d: [%d] - %s\n", i, inv[i], item_names[inv[i]]);
     }
 }
 
 static void put_item(int inv[INVENTORY_SIZE]) {
     int slot = 0, id = 0;
     if (!read_int("Введите индекс слота (0-9): ", MIN_SLOT, MAX_SLOT, &slot)) return;
-    if (!read_int("Введите ID предмета (1-9): ", ITEM_WOOD, ITEM_TOOL, &id)) return;
+    if (!read_int("Введите ID предмета (0-9): ", MIN_ITEM_ID, MAX_ITEM_ID, &id)) return;
     inv[slot] = id;
-    printf("Предмет [%d] (%s) положен в слот %d.\n", id, item_name(id), slot);
+    printf("Предмет [%d] (%s) положен в слот %d.\n", id, item_names[id], slot);
 }
 
 static void drop_item(int inv[INVENTORY_SIZE]) {
@@ -95,7 +108,7 @@ static void drop_item(int inv[INVENTORY_SIZE]) {
         printf("Слот %d уже пуст.\n", slot);
         return;
     }
-    printf("Из слота %d выброшен [%d] (%s).\n", slot, inv[slot], item_name(inv[slot]));
+    printf("Из слота %d выброшен [%d] (%s).\n", slot, inv[slot], item_names[inv[slot]]);
     inv[slot] = SLOT_EMPTY;
 }
 
@@ -106,34 +119,36 @@ static void variant_search_heavy(const int inv[INVENTORY_SIZE]) {
     int found = 0;
     for (int i = 0; i < INVENTORY_SIZE; i++) {
         if (inv[i] > a) {
-            printf("  Слот %d: [%d] (%s)\n", i, inv[i], item_name(inv[i]));
+            printf("  Слот %d: [%d] (%s)\n", i, inv[i], item_names[inv[i]]);
             found = 1;
         }
     }
     if (!found) printf("  Таких предметов нет.\n");
 }
 
-static void print_menu(void) {
-    printf("\n===== МЕНЮ =====\n");
+static void print_menu(const char *farmer_name) {
+    printf("\n===== Фермер: %s =====\n", farmer_name);
     printf("[0] Выход\n[1] Часы\n[2] Промотать время\n[3] Инвентарь\n");
     printf("[4] Положить\n[5] Выбросить\n[6] Поиск тяжестей\n");
     printf("Выберите пункт: ");
 }
 
 int main(void) {
+    char farmer_name[MAX_NAME_LEN];
+    printf("Введите имя фермера: ");
+    if (scanf("%31s", farmer_name) != 1) strcpy(farmer_name, "Безымянный");
+    clear_input();
+    
+    load_item_names();
+
     int current_day = START_DAY;
     int current_hour = START_HOUR;
     int inventory[INVENTORY_SIZE] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 };
     int choice = -1;
 
     do {
-        print_menu();
-        if (scanf("%d", &choice) != 1) {
-            printf("Ошибка: введите число.\n");
-            clear_input();
-            choice = -1;
-            continue;
-        }
+        print_menu(farmer_name);
+        if (scanf("%d", &choice) != 1) { clear_input(); choice = -1; continue; }
         clear_input();
 
         switch (choice) {
