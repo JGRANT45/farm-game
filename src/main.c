@@ -2,8 +2,7 @@
 
 #define INVENTORY_SIZE 10
 #define SLOT_EMPTY     0
-#define MIN_ITEM_ID    0
-#define MAX_ITEM_ID    9
+
 #define ITEM_WOOD      1
 #define ITEM_STONE     2
 #define ITEM_SEEDS     3
@@ -19,8 +18,32 @@
 #define HOURS_IN_DAY   24
 #define MIN_SLOT       0
 #define MAX_SLOT       (INVENTORY_SIZE - 1)
-static const char *item_name(int id)
-{
+#define MIN_ITEM_ID    0
+#define MAX_ITEM_ID    9
+
+static void clear_input(void) {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) { }
+}
+
+static int read_int(const char *prompt, int min, int max, int *out) {
+    int value;
+    printf("%s", prompt);
+    if (scanf("%d", &value) != 1) {
+        printf("Ошибка: нужно ввести целое число.\n");
+        clear_input();
+        return 0;
+    }
+    clear_input();
+    if (value < min || value > max) {
+        printf("Ошибка: число должно быть в диапазоне [%d; %d].\n", min, max);
+        return 0;
+    }
+    *out = value;
+    return 1;
+}
+
+static const char *item_name(int id) {
     switch (id) {
         case SLOT_EMPTY: return "Пусто";
         case ITEM_WOOD:  return "Дерево";
@@ -36,27 +59,13 @@ static const char *item_name(int id)
     }
 }
 
-static void print_inventory(const int inv[INVENTORY_SIZE])
-{
-    for (int i = 0; i < INVENTORY_SIZE; i++) {
-        printf("Слот %d: [%d] (%s)\n", i, inv[i], item_name(inv[i]));
-    }
-}
-
-static void show_clock(int day, int hour)
-{
+static void show_clock(int day, int hour) {
     printf("Текущее время: День %d, %02d:00\n", day, hour);
 }
 
-static void pass_time(int *day, int *hour)
-{
+static void pass_time(int *day, int *hour) {
     int worked = 0;
-    printf("Сколько часов хотите потратить на работу? ");
-    if (scanf("%d", &worked) != 1) {
-        printf("Ошибка ввода.\n");
-        while (getchar() != '\n');
-        return;
-    }
+    if (!read_int("Сколько часов хотите потратить на работу? ", 0, 100000, &worked)) return;
     *hour += worked;
     while (*hour >= HOURS_IN_DAY) {
         *hour -= HOURS_IN_DAY;
@@ -64,26 +73,14 @@ static void pass_time(int *day, int *hour)
     }
     printf("Новое время: День %d, %02d:00\n", *day, *hour);
 }
-static int read_int(const char *prompt, int min, int max, int *out)
-{
-    int value;
-    printf("%s", prompt);
-    if (scanf("%d", &value) != 1) {
-        printf("Ошибка: нужно целое число.\n");
-        while (getchar() != '\n');
-        return 0;
+
+static void print_inventory(const int inv[INVENTORY_SIZE]) {
+    for (int i = 0; i < INVENTORY_SIZE; i++) {
+        printf("Слот %d: [%d] (%s)\n", i, inv[i], item_name(inv[i]));
     }
-    while (getchar() != '\n');
-    if (value < min || value > max) {
-        printf("Ошибка: диапазон [%d; %d].\n", min, max);
-        return 0;
-    }
-    *out = value;
-    return 1;
 }
 
-static void put_item(int inv[INVENTORY_SIZE])
-{
+static void put_item(int inv[INVENTORY_SIZE]) {
     int slot = 0, id = 0;
     if (!read_int("Введите индекс слота (0-9): ", MIN_SLOT, MAX_SLOT, &slot)) return;
     if (!read_int("Введите ID предмета (1-9): ", ITEM_WOOD, ITEM_TOOL, &id)) return;
@@ -91,8 +88,7 @@ static void put_item(int inv[INVENTORY_SIZE])
     printf("Предмет [%d] (%s) положен в слот %d.\n", id, item_name(id), slot);
 }
 
-static void drop_item(int inv[INVENTORY_SIZE])
-{
+static void drop_item(int inv[INVENTORY_SIZE]) {
     int slot = 0;
     if (!read_int("Введите индекс слота (0-9): ", MIN_SLOT, MAX_SLOT, &slot)) return;
     if (inv[slot] == SLOT_EMPTY) {
@@ -102,11 +98,10 @@ static void drop_item(int inv[INVENTORY_SIZE])
     printf("Из слота %d выброшен [%d] (%s).\n", slot, inv[slot], item_name(inv[slot]));
     inv[slot] = SLOT_EMPTY;
 }
-static void variant_search_heavy(const int inv[INVENTORY_SIZE])
-{
+
+static void variant_search_heavy(const int inv[INVENTORY_SIZE]) {
     int a = 0;
     if (!read_int("Введите ID предмета a (0-9): ", MIN_ITEM_ID, MAX_ITEM_ID, &a)) return;
-
     printf("Слоты с предметами, чей ID строго больше %d:\n", a);
     int found = 0;
     for (int i = 0; i < INVENTORY_SIZE; i++) {
@@ -115,44 +110,31 @@ static void variant_search_heavy(const int inv[INVENTORY_SIZE])
             found = 1;
         }
     }
-    if (!found) {
-        printf("  Таких предметов нет.\n");
-    }
+    if (!found) printf("  Таких предметов нет.\n");
 }
-static void print_menu(void)
-{
+
+static void print_menu(void) {
     printf("\n===== МЕНЮ =====\n");
-    printf("[0] Выход\n");
-    printf("[1] Посмотреть на часы\n");
-    printf("[2] Промотать время (Поработать)\n");
-    printf("[3] Посмотреть инвентарь\n");
-    printf("[4] Положить предмет в слот\n");
-    printf("[5] Выбросить предмет\n");
-    printf("[6] Выполнить задание по варианту (Поиск тяжестей)\n");
+    printf("[0] Выход\n[1] Часы\n[2] Промотать время\n[3] Инвентарь\n");
+    printf("[4] Положить\n[5] Выбросить\n[6] Поиск тяжестей\n");
     printf("Выберите пункт: ");
 }
 
-int main(void)
-{
-    int current_day  = START_DAY;
+int main(void) {
+    int current_day = START_DAY;
     int current_hour = START_HOUR;
-
-    int inventory[INVENTORY_SIZE] = {
-        ITEM_WOOD, ITEM_STONE, ITEM_SEEDS, ITEM_IRON, ITEM_GOLD,
-        ITEM_APPLE, ITEM_BREAD, ITEM_WATER, ITEM_TOOL, SLOT_EMPTY
-    };
-
+    int inventory[INVENTORY_SIZE] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 };
     int choice = -1;
 
     do {
         print_menu();
         if (scanf("%d", &choice) != 1) {
             printf("Ошибка: введите число.\n");
-            while (getchar() != '\n');
+            clear_input();
             choice = -1;
             continue;
         }
-        while (getchar() != '\n');
+        clear_input();
 
         switch (choice) {
             case 0: printf("Выход.\n"); break;
