@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <time.h>
 
 #define INVENTORY_SIZE 10
 #define MAX_ITEMS      10
@@ -19,6 +21,19 @@
 #define FILE_INPUT     "input.txt"
 #define FILE_OUTPUT    "output.txt"
 #define FILE_DIARY     "diary.txt"
+
+#define MAP_MIN      5
+#define MAP_MAX      30
+#define OBST_MIN     15
+#define OBST_MAX     30
+#define JUMPS_NEEDED 3
+
+#define T_EMPTY  '.'
+#define T_TREE   'T'
+#define T_ROCK   'R'
+#define T_WALL   '#'
+#define T_HERO   '@'
+#define T_PORTAL 'P'
 
 char item_names[MAX_ITEMS][MAX_NAME_LEN];
 
@@ -203,6 +218,64 @@ static void print_menu(const char *farmer_name) {
     printf("[9] Логи\n");
     printf("Выберите пункт: ");
 }
+
+
+static int rnd(int min, int max) {
+    return min + rand() % (max - min + 1);
+}
+
+static char **alloc_map(int h, int w) {
+    char **m = (char **)malloc(h * sizeof(char *));
+    if (!m) return NULL;
+    for (int i = 0; i < h; i++) {
+        m[i] = (char *)malloc(w * sizeof(char));
+        if (!m[i]) {
+            while (i > 0) free(m[--i]);
+            free(m);
+            return NULL;
+        }
+    }
+    return m;
+}
+
+static void free_map(char **m, int h) {
+    if (!m) return;
+    for (int i = 0; i < h; i++) free(m[i]);
+    free(m);
+}
+
+static int put_random(char **m, int h, int w, char sym) {
+    for (int i = 0; i < 200; i++) {
+        int y = rnd(0, h - 1), x = rnd(0, w - 1);
+        if (m[y][x] == T_EMPTY) { m[y][x] = sym; return 1; }
+    }
+    return 0;
+}
+
+static char **gen_map(int h, int w, int *hx, int *hy, int need_portal) {
+    char **m = alloc_map(h, w);
+    if (!m) return NULL;
+
+    int pct = rnd(OBST_MIN, OBST_MAX);
+    for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++) {
+            int r = rnd(1, 100);
+            if (r <= pct) {
+                int k = rnd(1, 100);
+                m[y][x] = (k <= 60) ? T_TREE : (k <= 90) ? T_ROCK : T_WALL;
+            } else {
+                m[y][x] = T_EMPTY;
+            }
+        }
+
+    *hx = w / 2;
+    *hy = h / 2;
+    m[*hy][*hx] = T_HERO;
+
+    if (need_portal) put_random(m, h, w, T_PORTAL);
+    return m;
+}
+
 
 int main(void) {
     char farmer_name[MAX_NAME_LEN];
