@@ -216,6 +216,7 @@ static void print_menu(const char *farmer_name) {
     printf("[7] Поиск по названию\n");
     printf("[8] Записать в дневник\n");
     printf("[9] Логи\n");
+    printf("[10] Приключение\n");
     printf("Выберите пункт: ");
 }
 
@@ -275,6 +276,87 @@ static char **gen_map(int h, int w, int *hx, int *hy, int need_portal) {
     if (need_portal) put_random(m, h, w, T_PORTAL);
     return m;
 }
+static int step(char **m, int h, int w, int *hx, int *hy,
+                int dx, int dy, int *jumps) {
+    int nx = *hx + dx, ny = *hy + dy;
+    int wrapped = 0;
+
+    if (nx < 0)     { nx += w; wrapped = 1; }
+    else if (nx >= w) { nx -= w; wrapped = 1; }
+    if (ny < 0)     { ny += h; wrapped = 1; }
+    else if (ny >= h) { ny -= h; wrapped = 1; }
+
+    char t = m[ny][nx];
+    if (t == T_WALL || t == T_TREE || t == T_ROCK) return -1;
+
+    m[*hy][*hx] = T_EMPTY;
+    m[ny][nx]   = T_HERO;
+    *hx = nx;
+    *hy = ny;
+    if (wrapped) (*jumps)++;
+
+    return (t == T_PORTAL) ? 1 : 0;
+}
+
+static void adventure(void) {
+    srand((unsigned)time(NULL));
+
+    int h = rnd(MAP_MIN, MAP_MAX), w = rnd(MAP_MIN, MAP_MAX);
+    int hx, hy, jumps = 0, dist = 0, need_portal = 0;
+
+    char **m = gen_map(h, w, &hx, &hy, need_portal);
+    if (!m) { printf("[!] Нет памяти.\n"); return; }
+
+    printf("\n=== Лес-кольцо (%dx%d) ===\n", w, h);
+    printf("W/A/S/D — шаг, Q — домой. Край телепортирует на другую сторону.\n");
+    printf("После %d переходов через край появится портал P.\n\n", JUMPS_NEEDED);
+
+    while (1) {
+        printf("\nДальность: %d | Переходов: %d\n", dist, jumps);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) putchar(m[y][x]);
+            putchar('\n');
+        }
+
+        printf("Ход (W/A/S/D/Q): ");
+        char c;
+        if (scanf(" %c", &c) != 1) { clear_input(); continue; }
+        clear_input();
+
+        int dx = 0, dy = 0;
+        if      (c == 'w' || c == 'W') dy = -1;
+        else if (c == 's' || c == 'S') dy =  1;
+        else if (c == 'a' || c == 'A') dx = -1;
+        else if (c == 'd' || c == 'D') dx =  1;
+        else if (c == 'q' || c == 'Q') { printf("Домой.\n"); break; }
+        else { printf("Только W/A/S/D/Q.\n"); continue; }
+
+        int r = step(m, h, w, &hx, &hy, dx, dy, &jumps);
+        if (r == -1) { printf("Препятствие.\n"); continue; }
+
+        if (jumps >= JUMPS_NEEDED && !need_portal) {
+            if (put_random(m, h, w, T_PORTAL)) {
+                need_portal = 1;
+                printf("\n>>> Открылся портал P!\n");
+            }
+        }
+
+        if (r == 1) {
+            printf("\n>>> Портал! Новая локация...\n");
+            free_map(m, h);
+            dist++; jumps = 0; need_portal = 0;
+            h = rnd(MAP_MIN, MAP_MAX);
+            w = rnd(MAP_MIN, MAP_MAX);
+            m = gen_map(h, w, &hx, &hy, need_portal);
+            if (!m) { printf("[!] Нет памяти.\n"); return; }
+            printf("=== Новый участок (%dx%d) ===\n", w, h);
+        }
+    }
+
+    free_map(m, h);
+    printf("Карта освобождена.\n");
+}
+
 
 
 int main(void) {
@@ -306,6 +388,7 @@ int main(void) {
             case 7: find_by_name(inventory); break;
             case 8: write_diary(farmer_name, current_day, current_hour, inventory); break;
             case 9: variant_process_logs(); break;
+            case 10: adventure(); break;
             default: printf("Неверный пункт.\n"); break;
         }
     } while (choice != 0);
